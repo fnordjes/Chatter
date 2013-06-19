@@ -24,7 +24,7 @@ class Chatter:
         self.words = {}
         self.avg_word_length = 0
         self.avg_sentence_length = 0
-        self.delims = ['!','?','.',',',';',':']
+        self.delims = ['!','?','.',]
 
     def learn(self, text):
         print 'learn'
