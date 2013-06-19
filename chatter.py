@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import re, random, bisect
+import re, random, bisect, argparse
 
 def increment_key(key, subkey, dictionary):
     if key not in dictionary:
@@ -26,8 +26,10 @@ class Chatter:
         self.avg_sentence_length = 0
         self.delims = ['!','?','.',]
 
-    def learn(self, text):
-        print 'learn'
+    def learn(self, file):
+        text = file.read()
+
+        print 'learning ' + file.name
         text = text.lower()
         sentences = re.split(r'\s*[!?.,;:]\s*', text)
         for sentence in sentences:
@@ -61,7 +63,7 @@ class Chatter:
                 
 
     def gibber(self):
-        print 'gibber:'
+        print '\ngibber:'
         char = select_weighted(self.chars[None])
         word = ''
         word += char
@@ -73,7 +75,7 @@ class Chatter:
         print word
 
     def babbel(self):
-        print 'babbel:'
+        print '\nbabbel:'
         word = select_weighted(self.words[None])
         sentence = []
         sentence.append(word)
@@ -98,8 +100,19 @@ class Chatter:
     
 
 if __name__ == '__main__':
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Generate random sentences and words from specified input files.')
+    parser.add_argument('files', metavar='FILE', type=argparse.FileType('r'), nargs='*', 
+            default=open('sample_data/Goethe_Werther.txt', 'r'), help='A text file containing input data')
+    args = parser.parse_args()
+    files = args.files
+
+    if not type(files) is list:
+        files = [files]
+
     c = Chatter()
-    c.learn(open('sample_data/Goethe_Werther.txt', 'r').read())
+    for file in files:
+        c.learn(file)
     c.babbel()
     c.gibber()
     
