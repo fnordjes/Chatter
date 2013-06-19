@@ -9,13 +9,14 @@ def increment_key(key, subkey, dictionary):
         dictionary[key][subkey] = 1
     else:
         dictionary[key][subkey] += 1
-        
-def select_weighted(dictionary):
-    items, total = [], 0
-    for key, value in dictionary.items():
-        total += value
-        items.append((total, key))
-    return items[bisect.bisect_left(items, (random.randint(1, total),))][1]
+
+def select_weighted(d):
+    r = random.uniform(0, sum(d.itervalues()))
+    s = 0.0
+    for k, w in d.iteritems():
+        s += w
+        if r < s: return k
+    return k
 
 class Chatter:
 
@@ -103,3 +104,4 @@ if __name__ == '__main__':
     c.babbel()
     c.gibber()
     
+    Test()
