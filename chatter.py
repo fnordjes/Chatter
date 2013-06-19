@@ -28,7 +28,6 @@ class Chatter:
         self.delims = ['!','?','.',',',';',':']
 
     def learn(self, text):
-        print 'learn'
         text = text.lower()
         sentences = re.split(r'\s*[!?.,;:]\s*', text)
         for sentence in sentences:
@@ -66,7 +65,7 @@ class Chatter:
         char = select_weighted(self.chars[None])
         word = ''
         word += char
-        for i in range(1, 10):
+        for _ in range(1, 10):
             char = select_weighted(self.chars[char])
             if char == None:
                 break
@@ -78,7 +77,7 @@ class Chatter:
         word = select_weighted(self.words[None])
         sentence = []
         sentence.append(word)
-        for i in range(1, 10):
+        for _ in range(1, 10):
             word = select_weighted(self.words[word])
             if word == None:
                 break
@@ -104,4 +103,3 @@ if __name__ == '__main__':
     c.babbel()
     c.gibber()
     
-    Test()
