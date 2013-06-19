@@ -99,7 +99,7 @@ class Chatter:
 
 if __name__ == '__main__':
     c = Chatter()
-    c.learn(open('faust.txt', 'r').read())
+    c.learn(open('sample_data/Goethe_Werther.txt', 'r').read())
     c.babbel()
     c.gibber()
     
