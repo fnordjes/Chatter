@@ -31,6 +31,8 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
 {'chars': {'count': 30.0, 'avg': 5.1000000000000005}, 'words': {'count': 6.0, 'avg': 5.0}}
 ```
 
+In the 'stats' dict we have 'chars' which holds the statistics of characters per word, the 'words' hold the statistics for words per sentence.
+
 Usage from the command line
 ---------------------------
 
