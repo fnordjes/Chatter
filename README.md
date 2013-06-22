@@ -21,7 +21,14 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
 'flat is better than complex is better?'
 >>> bot.gibber()
 'ben isicompl comply t tetter?'
->>> 
+>>> bot.create_word()
+'compan'
+>>>
+>>> knowledge = bot.dump_memory()
+>>> knowledge['words']['than']
+{'dense': 1, 'nested': 1, 'ugly': 1, 'complex': 1, 'complicated': 1, 'implicit': 1}
+>>> knowledge['stats']
+{'chars': {'count': 30.0, 'avg': 5.1000000000000005}, 'words': {'count': 6.0, 'avg': 5.0}}
 ```
 
 Usage from the command line
@@ -45,4 +52,9 @@ optional arguments:
                         default: 1
   -g, --gibber          Create gibberish, make up the words
 
+$ echo "Beautiful is better than ugly." | ./chatter.py -d knowledge.dict
+beautiful is better than ugly! 
+$ ./chatter.py -i in.txt -o out.txt -d knowledge.dict -g
+$ cat out.txt
+bl heris imes as nkish n plis iabeali.
 ```
