@@ -93,11 +93,11 @@ class Chatter(object):
         return word
         
     def dump_memory(self):
-        return str({
+        return {
             'chars': self.chars,
             'words': self.words,
             'stats': self.stats
-        })
+        }
         
     def read_dict(self, dictionary):
         self.chars = dictionary['chars']
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # spit out what has been learned
     if dict_file:
         f = open(dict_file.name, 'w')
-        f.write(c.dump_memory())
+        f.write(str(c.dump_memory()))
         f.close()
     
     exit(0)
