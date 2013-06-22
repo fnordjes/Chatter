@@ -169,6 +169,7 @@ if __name__ == '__main__':
     in_files = args.input
     dict_file = args.dict
     out_file = args.output
+    length = int(args.length)
 
     c = Chatter()
     
@@ -194,7 +195,7 @@ if __name__ == '__main__':
             file.close()
        
     # now lets babbel a bit
-    for _ in range(0, args.length):
+    for _ in range(0, length):
         if args.gibber:
             out_file.write(c.gibber() + ' ')
         else:
