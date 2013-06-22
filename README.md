@@ -6,7 +6,21 @@ Babbel Bot - builds Markov-Chains by given text and uses them to generate text.
 Usage as python module
 ----------------------
 
-
+```python
+>>> import chatter as c
+>>> bot = c.Chatter()
+>>> bot.learn("Beautiful is better than ugly.")
+>>> bot.learn("Explicit is better than implicit.")
+>>> bot.learn("Simple is better than complex.")
+>>> bot.learn("Complex is better than complicated.")
+>>> bot.learn("Flat is better than nested.")
+>>> bot.learn("Sparse is better than dense.")
+>>> bot.babbel()
+'flat is better than complex is better?'
+>>> bot.gibber()
+'ben isicompl comply t tetter?'
+>>> 
+```
 
 Usage from the command line
 ---------------------------
