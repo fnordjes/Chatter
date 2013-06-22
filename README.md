@@ -6,6 +6,8 @@ Babbel Bot - builds Markov-Chains by given text and uses them to generate text.
 Usage as python module
 ----------------------
 
+Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
+
 ```python
 >>> import chatter as c
 >>> bot = c.Chatter()
