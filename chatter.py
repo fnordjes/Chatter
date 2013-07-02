@@ -23,7 +23,7 @@ class Chatter(object):
 
     def learn(self, text):
         text = text.lower()
-        sentences = re.split(r'\s*["!?.,;:]\s*', text)
+        sentences = re.split(r'\s*[()"!?.,;:]\s*', text)
         for sentence in sentences:
             word_list = sentence.split()
             
