@@ -23,9 +23,9 @@ class Chatter(object):
 
     def learn(self, text):
         text = text.lower()
-        sentences = re.split(r'\s*[()"!?.,;:]\s*', text)
+        sentences = re.split(r'\s*[()"!?.,;:]+\s*', text)
         for sentence in sentences:
-            word_list = sentence.split()
+            word_list = re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
             
             # skip if there's nothing to do
             if not word_list:
@@ -41,6 +41,10 @@ class Chatter(object):
                 
                 # build frequency distribution of followers for single chars
                 char_list = list(word)
+
+		if not char_list:
+		    continue
+
                 # add entry for the start of words - key None
                 self.increment_key(None, char_list[0], self.chars)
                 # add entries for the rest of chars in the word, includes a
