@@ -84,7 +84,6 @@ class Chatter(object):
             word = self.select_weighted(self.words[None]['dsc'])
             
         # build (the rest of) the sentence climbing the chain down
-        sentence.append(word)
         for _ in range(0, n):
             word = self.select_weighted(self.words[word]['dsc'])
             if word == None:
