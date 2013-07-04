@@ -26,7 +26,7 @@ class Chatter(object):
         sentences = re.split(r'\s*[()"!?.,;:]+\s*', text)
         for sentence in sentences:
             word_list = re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
-            
+
             # skip if there's nothing to do
             if not word_list:
                 continue
@@ -41,9 +41,8 @@ class Chatter(object):
                 
                 # build frequency distribution of followers for single chars
                 char_list = list(word)
-
-		if not char_list:
-		    continue
+                if not char_list:
+                    continue
 
                 # add entry for the start of words - key None
                 self.increment_key(None, char_list[0], self.chars)
@@ -67,15 +66,27 @@ class Chatter(object):
         sentence = ' '.join(sentence)
         return sentence + self.select_weighted(self.delims)
 
-    def babbel(self):
+    def babbel(self, about=None):
         # todo: we define a max length for the sentence as avg_length + 50%
         avg = self.stats['words']['avg']
         n = int(random.uniform(avg, avg * 1.5))
-        word = self.select_weighted(self.words[None])
         sentence = []
+        
+        # beginning with the string 'about' create the start of the sentence
+        # (climb up the chain of words until a starter is found)
+        if about and about in self.words:
+            word = about
+            while word != None:
+                sentence.insert(0, word)
+                word = self.select_weighted(self.words[word]['asc'])
+            word = about    
+        else:
+            word = self.select_weighted(self.words[None]['dsc'])
+            
+        # build (the rest of) the sentence climbing the chain down
         sentence.append(word)
         for _ in range(0, n):
-            word = self.select_weighted(self.words[word])
+            word = self.select_weighted(self.words[word]['dsc'])
             if word == None:
                 break
             sentence.append(word)
@@ -86,11 +97,11 @@ class Chatter(object):
         # todo: we define a max length for the word as avg_length + 50%
         avg = self.stats['chars']['avg']
         n = int(random.uniform(avg, avg * 1.5))
-        char = self.select_weighted(self.chars[None])
+        char = self.select_weighted(self.chars[None]['dsc'])
         word = ''
         word += char
         for _ in range(0, n):
-            char = self.select_weighted(self.chars[char])
+            char = self.select_weighted(self.chars[char]['dsc'])
             if char == None:
                 break
             word += char
@@ -124,10 +135,25 @@ class Chatter(object):
     def increment_key(key, subkey, dictionary):
         if key not in dictionary:
             dictionary[key] = {}
-        if subkey not in dictionary[key]:
-            dictionary[key][subkey] = 1
+            dictionary[key]['asc'] = {}
+            dictionary[key]['dsc'] = {}
+        if subkey not in dictionary:
+            dictionary[subkey] = {}
+            dictionary[subkey]['asc'] = {}
+            dictionary[subkey]['dsc'] = {}
+        
+        # create link between words in descending order to be able to create
+        # sentences from start to end
+        if subkey not in dictionary[key]['dsc']:
+            dictionary[key]['dsc'][subkey] = 1
         else:
-            dictionary[key][subkey] += 1
+            dictionary[key]['dsc'][subkey] += 1
+        # create link between words in ascending order to bee able to create
+        # sentences from back to start
+        if key not in dictionary[subkey]['asc']:
+            dictionary[subkey]['asc'][key] = 1
+        else:
+            dictionary[subkey]['asc'][key] += 1
             
     @staticmethod
     def select_weighted(dictionary):
@@ -164,6 +190,8 @@ if __name__ == '__main__':
         type=argparse.FileType('w'),
         help='Output of the babbelbot (defaults to stdout)',
         default=sys.stdout)
+    parser.add_argument('-a', '--about', metavar='STRING',
+        help='Give a word that should be included in the generated text')
     parser.add_argument('-l', '--length', metavar='INT',
         help='Number of sentences to generate (length may vary) default: 1',
         default=1)
@@ -174,6 +202,7 @@ if __name__ == '__main__':
     dict_file = args.dict
     out_file = args.output
     length = int(args.length)
+    about = args.about
 
     c = Chatter()
     
@@ -203,7 +232,7 @@ if __name__ == '__main__':
         if args.gibber:
             out_file.write(c.gibber() + ' ')
         else:
-            out_file.write(c.babbel() + ' ')
+            out_file.write(c.babbel(about) + ' ')
         out_file.write('\n')
             
     # spit out what has been learned
