@@ -19,6 +19,10 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
 >>> bot.learn("Sparse is better than dense.")
 >>> bot.babbel()
 'flat is better than complex is better?'
+>>> bot.babbel('better')
+'simple is better better than ugly.'
+>>> bot.babbel('love')
+'flat is better than implicit.'
 >>> bot.gibber()
 'ben isicompl comply t tetter?'
 >>> bot.create_word()
@@ -26,7 +30,20 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
 >>>
 >>> knowledge = bot.dump_memory()
 >>> knowledge['words']['than']
-{'dense': 1, 'nested': 1, 'ugly': 1, 'complex': 1, 'complicated': 1, 'implicit': 1}
+# output is formatted, just for you
+{
+    'asc': {
+      'better': 6
+    },
+    'dsc': {
+        'dense': 1,
+        'nested': 1,
+        'ugly': 1,
+        'complex': 1,
+        'complicated': 1,
+        'implicit': 1
+    }
+}
 >>> knowledge['stats']
 {'chars': {'count': 30.0, 'avg': 5.1000000000000005}, 'words': {'count': 6.0, 'avg': 5.0}}
 ```
@@ -36,8 +53,10 @@ In the 'stats' dict we have 'chars' which holds the statistics of characters per
 Usage from the command line
 ---------------------------
 
+Let's assume we have the zen of python in a file called zen.txt. 
+
 ```sh
-$ ./chatter.py -h
+$ ./chatter.py --help
 usage: chatter.py [-h] [-i [FILE [FILE ...]]] [-d FILE] [-o FILE] [-l INT]
                   [-g]
 
@@ -50,13 +69,23 @@ optional arguments:
   -d FILE, --dict FILE  Restore and extend dictionary in file
   -o FILE, --output FILE
                         Output of the babbelbot (defaults to stdout)
+  -a STRING, --about STRING
+                        Give a word that should be included in the generated
+                        text
   -l INT, --length INT  Number of sentences to generate (length may vary)
                         default: 1
   -g, --gibber          Create gibberish, make up the words
 
-$ echo "Beautiful is better than ugly." | ./chatter.py -d knowledge.dict
-beautiful is better than ugly! 
-$ ./chatter.py -i in.txt -o out.txt -d knowledge.dict -g
-$ cat out.txt
+$ cat zen.txt | ./chatter.py -d knowledge.dict 
+the temptation to guess?
+
+$ echo "" | ./chatter.py -d knowledge.dict 
+the implementation is better than complicated?
+
+$ echo "" | ./chatter.py -d knowledge.dict --about special
+special cases aren't special enough to guess?
+
+$ ./chatter.py -d knowledge.dict -gibber
 bl heris imes as nkish n plis iabeali.
 ```
+BTW meta-fun: teach the bot some python code and see if it runs ;)
