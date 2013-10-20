@@ -136,10 +136,14 @@ class Chatter(object):
             dictionary[key] = {}
             dictionary[key]['asc'] = {}
             dictionary[key]['dsc'] = {}
+            dictionary[key]['cnt'] = 0
         if subkey not in dictionary:
             dictionary[subkey] = {}
             dictionary[subkey]['asc'] = {}
             dictionary[subkey]['dsc'] = {}
+            dictionary[subkey]['cnt'] = 0
+            
+        dictionary[key]['cnt'] += 1
         
         # create link between words in descending order to be able to create
         # sentences from start to end
