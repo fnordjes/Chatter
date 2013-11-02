@@ -200,12 +200,15 @@ if __name__ == '__main__':
         default=1)
     parser.add_argument('-g', '--gibber', action='store_true',
         help='Create gibberish, make up the words')
+    parser.add_argument('-q', '--quiet', action='store_true',
+        help='No output - just consume input')
     args = parser.parse_args()
     in_files = args.input
     dict_file = args.dict
     out_file = args.output
     length = int(args.length)
     about = args.about
+    quiet = args.quiet
 
     c = Chatter()
     
@@ -231,12 +234,13 @@ if __name__ == '__main__':
             file.close()
        
     # now lets babbel a bit
-    for _ in range(0, length):
-        if args.gibber:
-            out_file.write(c.gibber() + ' ')
-        else:
-            out_file.write(c.babbel(about) + ' ')
-        out_file.write('\n')
+    if not quiet:
+        for _ in range(0, length):
+            if args.gibber:
+                out_file.write(c.gibber() + ' ')
+            else:
+                out_file.write(c.babbel(about) + ' ')
+            out_file.write('\n')
             
     # spit out what has been learned
     if dict_file:
