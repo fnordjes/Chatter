@@ -3,7 +3,8 @@ Chatter
 
 Babbel Bot - builds Markov-Chains by given text and uses them to generate text.
 
-Requires Python 3. Input may be UTF-8 or Latin-1 encoded.
+Requires Python 3. Input may be plain text (UTF-8 or Latin-1 encoded) or
+epub files, e.g. from https://projekt-gutenberg.org/.
 
 Run the tests with `python -m unittest test_chatter`.
 
@@ -79,7 +80,8 @@ Generate random sentences and words from specified input files.
 options:
   -h, --help            show this help message and exit
   -i [FILE ...], --input [FILE ...]
-                        Text file(s) containing input data (defaults to stdin)
+                        Text or epub file(s) containing input data (defaults
+                        to stdin)
   -d FILE, --dict FILE  Restore and extend dictionary in file (json)
   -o FILE, --output FILE
                         Output of the babbelbot (defaults to stdout)

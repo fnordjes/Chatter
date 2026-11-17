@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-import re, random, argparse, json, sys, os.path
+import re, random, argparse, json, sys, os.path, io, zipfile, posixpath
+import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
+from urllib.parse import unquote
 
 # marks the start and the end of sentences and words (json has no None keys)
 EDGE = ''
@@ -11,6 +14,56 @@ def decode(data):
         return data.decode('utf-8')
     except UnicodeDecodeError:
         return data.decode('latin-1')
+
+def read_text(data):
+    # epubs are zip files, everything else is taken as plain text
+    if data.startswith(b'PK'):
+        return read_epub(data)
+    return decode(data)
+
+def read_epub(data):
+    book = zipfile.ZipFile(io.BytesIO(data))
+    # the container points to the package file, which lists the chapters
+    # (manifest) and their reading order (spine)
+    container = ET.fromstring(book.read('META-INF/container.xml'))
+    opf_path = container.find('.//{*}rootfile').get('full-path')
+    package = ET.fromstring(book.read(opf_path))
+    hrefs = {item.get('id'): item.get('href')
+             for item in package.iterfind('.//{*}manifest/{*}item')}
+    text = []
+    for itemref in package.iterfind('.//{*}spine/{*}itemref'):
+        path = posixpath.join(posixpath.dirname(opf_path),
+                              unquote(hrefs[itemref.get('idref')]))
+        extractor = TextExtractor()
+        extractor.feed(decode(book.read(path)))
+        text.append(''.join(extractor.text))
+    return '\n'.join(text)
+
+class TextExtractor(HTMLParser):
+    # end a sentence after blocks, so headings don't run into the text
+    BLOCKS = {'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'tr'}
+    SKIP = {'head', 'script', 'style'}
+
+    def __init__(self):
+        super().__init__()
+        self.text = []
+        self.skipping = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self.skipping += 1
+        elif tag == 'br':
+            self.text.append(' ')
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self.skipping -= 1
+        elif tag in self.BLOCKS:
+            self.text.append('.\n')
+
+    def handle_data(self, data):
+        if not self.skipping:
+            self.text.append(data)
 
 class Chatter(object):
     def __init__(self, order=2):
@@ -204,7 +257,7 @@ if __name__ == '__main__':
         description=
         'Generate random sentences and words from specified input files.')
     parser.add_argument('-i', '--input', metavar='FILE', nargs='*',
-        help='Text file(s) containing input data (defaults to stdin)')
+        help='Text or epub file(s) containing input data (defaults to stdin)')
     parser.add_argument('-d', '--dict', metavar='FILE',
         help='Restore and extend dictionary in file (json)')
     parser.add_argument('-o', '--output', metavar='FILE',
@@ -252,7 +305,7 @@ if __name__ == '__main__':
     if args.input:
         for name in args.input:
             with open(name, 'rb') as f:
-                c.learn(decode(f.read()))
+                c.learn(read_text(f.read()))
     elif not args.chat and not sys.stdin.isatty():
         c.learn(decode(sys.stdin.buffer.read()))
 

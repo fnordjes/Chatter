@@ -13,6 +13,29 @@ ZEN = [
 ]
 
 
+def write_epub(path, chapters):
+    import zipfile
+    with zipfile.ZipFile(path, 'w') as z:
+        z.writestr('mimetype', 'application/epub+zip')
+        z.writestr('META-INF/container.xml',
+            '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+            '<rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles>'
+            '</container>')
+        manifest = ''.join('<item id="c%d" href="%s"/>' % (i, name)
+                           for i, (name, _) in enumerate(chapters))
+        spine = ''.join('<itemref idref="c%d"/>' % i
+                        for i in range(len(chapters)))
+        z.writestr('OEBPS/content.opf',
+            '<package xmlns="http://www.idpf.org/2007/opf">'
+            '<manifest>%s</manifest><spine>%s</spine></package>'
+            % (manifest, spine))
+        for name, body in chapters:
+            z.writestr('OEBPS/' + name,
+                '<html xmlns="http://www.w3.org/1999/xhtml"><head>'
+                '<title>Werther</title><style>p {}</style></head>'
+                '<body>%s</body></html>' % body)
+
+
 class ChatterTest(unittest.TestCase):
     def setUp(self):
         random.seed(42)
@@ -126,6 +149,22 @@ class CommandLineTest(unittest.TestCase):
             self.assertIn("hello wonderful world", out)
             with open(dict_file, encoding='utf-8') as f:
                 self.assertIn("aus köln", json.load(f)['words']['dsc'])
+
+    def test_reads_epub_input_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'book.epub')
+            write_epub(path, [
+                # spine order differs from file names on purpose
+                ('Text/b.xhtml', '<h1>Erstes Kapitel</h1>'
+                                 '<p>Wie froh bin ich.</p>'),
+                ('Text/a.xhtml', '<p>Daß ich<br/>weg bin!</p>'),
+            ])
+            text = c.read_epub(open(path, 'rb').read())
+            self.assertEqual(text.split(),
+                             ['Erstes', 'Kapitel.', 'Wie', 'froh', 'bin',
+                              'ich..', 'Daß', 'ich', 'weg', 'bin!.'])
+            out = self.run_cli('-i', path, '-n', '3', '-a', 'weg')
+            self.assertEqual(out.strip()[:-1], "daß ich weg bin")
 
     def test_reads_latin1_input_file(self):
         with tempfile.TemporaryDirectory() as tmp:
