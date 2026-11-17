@@ -13,9 +13,11 @@ def decode(data):
         return data.decode('latin-1')
 
 class Chatter(object):
-    def __init__(self):
-        self.chars = {}
-        self.words = {}
+    def __init__(self, order=2):
+        # how many preceding words (or chars) determine the next one
+        self.order = order
+        self.chars = self.new_chain()
+        self.words = self.new_chain()
 
         self.stats = {}
         # words per sentence stats
@@ -42,27 +44,25 @@ class Chatter(object):
             if not word_list:
                 continue
 
-            # store the beginning of sentences with key EDGE
-            self.increment_key(EDGE, word_list[0], self.words)
-            for i, word in enumerate(word_list):
-                # build frequency distribution of followers for words (again
-                # follower is EDGE if it is the last word in sentence)
-                follow_word = self.select_follower(i, word_list)
-                self.increment_key(word, follow_word, self.words)
+            self.learn_sequence(word_list, self.words)
+            for word in word_list:
+                self.learn_sequence(list(word), self.chars)
+                self.__update_average(len(word), self.stats['chars'])
 
-                # build frequency distribution of followers for single chars
-                char_list = list(word)
+            self.__update_average(len(word_list), self.stats['words'])
 
-                # add entry for the start of words - key EDGE
-                self.increment_key(EDGE, char_list[0], self.chars)
-                # add entries for the rest of chars in the word, includes a
-                # marker for the end (value: EDGE)
-                for j, char in enumerate(char_list):
-                    follower = self.select_follower(j, char_list)
-                    self.increment_key(char, follower, self.chars)
-                self.__update_average(j + 1, self.stats['chars'])
-
-            self.__update_average(i + 1, self.stats['words'])
+    def learn_sequence(self, items, chain):
+        n = self.order
+        # 'dsc': which item follows the n items before it, padded with EDGE
+        # so the start is known and EDGE follows the last item
+        padded = [EDGE] * n + items + [EDGE]
+        for i in range(n, len(padded)):
+            self.increment_key(padded[i - n:i], padded[i], chain['dsc'])
+        # 'asc': which item precedes the n items after it, to be able to
+        # create sentences from back to start
+        padded = [EDGE] + items + [EDGE] * n
+        for i in range(0, len(items) + 1):
+            self.increment_key(padded[i + 1:i + 1 + n], padded[i], chain['asc'])
 
     def gibber(self):
         # todo: we define a max length for the sentence as avg_length + 50%
@@ -75,54 +75,59 @@ class Chatter(object):
         return sentence + self.select_weighted(self.delims)
 
     def babbel(self, about=None):
-        # todo: we define a max length for the sentence as avg_length + 50%
-        avg = self.stats['words']['avg']
-        n = int(random.uniform(avg, avg * 1.5))
-        sentence = []
-
-        # beginning with the string 'about' create the start of the sentence
-        # (climb up the chain of words until a starter is found)
-        if about and about.lower() in self.words:
-            word = about.lower()
-            while word != EDGE:
-                sentence.insert(0, word)
-                word = self.select_weighted(self.words[word]['asc'])
-            word = about.lower()
-        else:
-            word = self.select_weighted(self.words[EDGE]['dsc'])
-            sentence.append(word)
-
-        # build (the rest of) the sentence climbing the chain down
-        for _ in range(0, n):
-            word = self.select_weighted(self.words[word]['dsc'])
-            if word == EDGE:
-                break
-            sentence.append(word)
-        sentence = ' '.join(sentence)
-        return sentence + self.select_weighted(self.delims)
+        about = about.lower() if about else None
+        sentence = self.generate(self.words, self.stats['words'], about)
+        return ' '.join(sentence) + self.select_weighted(self.delims)
 
     def create_word(self):
-        # todo: we define a max length for the word as avg_length + 50%
-        avg = self.stats['chars']['avg']
-        n = int(random.uniform(avg, avg * 1.5))
-        char = self.select_weighted(self.chars[EDGE]['dsc'])
-        word = ''
-        word += char
-        for _ in range(0, n):
-            char = self.select_weighted(self.chars[char]['dsc'])
-            if char == EDGE:
+        return ''.join(self.generate(self.chars, self.stats['chars']))
+
+    def generate(self, chain, stats, about=None):
+        # safety net only - sequences usually end by reaching EDGE
+        limit = int(stats['avg'] * 3) + 1
+
+        # start from a window of n items ending in 'about' if possible,
+        # otherwise from the start of a sequence
+        windows = {}
+        if about:
+            for key, followers in chain['dsc'].items():
+                if key.split(' ')[-1] == about:
+                    windows[key] = sum(followers.values())
+        if windows:
+            window = self.select_weighted(windows).split(' ')
+        else:
+            window = [EDGE] * self.order
+        sequence = [item for item in window if item != EDGE]
+
+        # climb up the chain until a starter is found
+        state = window
+        while state[0] != EDGE and len(sequence) < limit:
+            item = self.select_weighted(chain['asc'][self.key(state)])
+            if item == EDGE:
                 break
-            word += char
-        return word
+            sequence.insert(0, item)
+            state = [item] + state[:-1]
+
+        # build the rest of the sequence climbing the chain down
+        state = window
+        while len(sequence) < limit:
+            item = self.select_weighted(chain['dsc'][self.key(state)])
+            if item == EDGE:
+                break
+            sequence.append(item)
+            state = state[1:] + [item]
+        return sequence
 
     def dump_memory(self):
         return {
+            'order': self.order,
             'chars': self.chars,
             'words': self.words,
             'stats': self.stats
         }
 
     def read_dict(self, dictionary):
+        self.order = dictionary['order']
         self.chars = dictionary['chars']
         self.words = dictionary['words']
         self.stats = dictionary['stats']
@@ -132,40 +137,19 @@ class Chatter(object):
         stats['avg'] += (float(count) - stats['avg']) / float(stats['count'])
 
     @staticmethod
-    def select_follower(pos, item_list):
-        if pos < len(item_list) - 1:
-            follower = item_list[pos + 1]
-        else:
-            follower = EDGE
-        return follower
+    def new_chain():
+        return {'asc': {}, 'dsc': {}}
 
     @staticmethod
-    def increment_key(key, subkey, dictionary):
-        if key not in dictionary:
-            dictionary[key] = {}
-            dictionary[key]['asc'] = {}
-            dictionary[key]['dsc'] = {}
-            dictionary[key]['cnt'] = 0
-        if subkey not in dictionary:
-            dictionary[subkey] = {}
-            dictionary[subkey]['asc'] = {}
-            dictionary[subkey]['dsc'] = {}
-            dictionary[subkey]['cnt'] = 0
+    def key(items):
+        # words and chars never contain spaces, so this is unambiguous and
+        # keeps the keys json-friendly
+        return ' '.join(items)
 
-        dictionary[key]['cnt'] += 1
-
-        # create link between words in descending order to be able to create
-        # sentences from start to end
-        if subkey not in dictionary[key]['dsc']:
-            dictionary[key]['dsc'][subkey] = 1
-        else:
-            dictionary[key]['dsc'][subkey] += 1
-        # create link between words in ascending order to bee able to create
-        # sentences from back to start
-        if key not in dictionary[subkey]['asc']:
-            dictionary[subkey]['asc'][key] = 1
-        else:
-            dictionary[subkey]['asc'][key] += 1
+    @staticmethod
+    def increment_key(items, follower, dictionary):
+        followers = dictionary.setdefault(Chatter.key(items), {})
+        followers[follower] = followers.get(follower, 0) + 1
 
     @staticmethod
     def select_weighted(dictionary):
@@ -196,9 +180,13 @@ if __name__ == '__main__':
         help='Create gibberish, make up the words')
     parser.add_argument('-q', '--quiet', action='store_true',
         help='No output - just consume input')
+    parser.add_argument('-n', '--order', metavar='INT', type=int,
+        help='Number of preceding words (or chars) that determine the next '
+             'one - higher is more coherent, but closer to the input. '
+             'default: 2, or what the dictionary was built with')
     args = parser.parse_args()
 
-    c = Chatter()
+    c = Chatter(args.order or 2)
 
     # restore memory
     if args.dict and os.path.exists(args.dict):
@@ -210,6 +198,10 @@ if __name__ == '__main__':
             except (ValueError, KeyError):
                 sys.stderr.write('Cannot read dict file. Exiting.\n')
                 exit(1)
+            if args.order and args.order != c.order:
+                sys.stderr.write('Dict file was built with order %d. '
+                                 'Exiting.\n' % c.order)
+                exit(1)
 
     # consume input - stdin only if something is piped in
     if args.input:
@@ -219,7 +211,7 @@ if __name__ == '__main__':
     elif not sys.stdin.isatty():
         c.learn(decode(sys.stdin.buffer.read()))
 
-    if EDGE not in c.words:
+    if not c.words['dsc']:
         sys.stderr.write('Nothing learned yet - feed me some text.\n')
         exit(1)
 

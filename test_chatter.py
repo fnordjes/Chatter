@@ -53,13 +53,32 @@ class ChatterTest(unittest.TestCase):
         self.assertEqual(bot.babbel()[:-1], "daß ist schön")
 
     def test_memory_round_trips_through_json(self):
-        bot = c.Chatter()
+        bot = c.Chatter(order=2)
         for line in ZEN:
             bot.learn(line)
         memory = json.loads(json.dumps(bot.dump_memory()))
         other = c.Chatter()
         other.read_dict(memory)
+        self.assertEqual(other.order, 2)
         self.assertEqual(other.dump_memory(), bot.dump_memory())
+
+    def test_higher_order_reproduces_unambiguous_text(self):
+        # with one word of lookback "is" is ambiguous, with two it is not
+        text = "the cat is here. the dog is there."
+        bot = c.Chatter(order=2)
+        bot.learn(text)
+        for _ in range(20):
+            self.assertIn(bot.babbel()[:-1],
+                          ["the cat is here", "the dog is there"])
+            self.assertEqual(bot.babbel("here")[:-1], "the cat is here")
+
+    def test_about_works_with_higher_order(self):
+        bot = c.Chatter(order=4)
+        for line in ZEN:
+            bot.learn(line)
+        for _ in range(20):
+            self.assertEqual(bot.babbel("nested")[:-1],
+                             "flat is better than nested")
 
     def test_decode_falls_back_to_latin1(self):
         self.assertEqual(c.decode("daß".encode('latin-1')), "daß")

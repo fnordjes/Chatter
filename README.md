@@ -10,11 +10,12 @@ Run the tests with `python -m unittest test_chatter`.
 Usage as python module
 ----------------------
 
-Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
+Let's teach the bot a passage from "The Zen of Python", by Tim Peters. The
+passage is tiny, so we let the bot look back only one word (`order=1`):
 
 ```python
 >>> import chatter as c
->>> bot = c.Chatter()
+>>> bot = c.Chatter(order=1)
 >>> bot.learn("Beautiful is better than ugly.")
 >>> bot.learn("Explicit is better than implicit.")
 >>> bot.learn("Simple is better than complex.")
@@ -22,38 +23,46 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
 >>> bot.learn("Flat is better than nested.")
 >>> bot.learn("Sparse is better than dense.")
 >>> bot.babbel()
-'flat is better than complex is better?'
+'explicit is better than complicated!'
 >>> bot.babbel('better')
-'simple is better better than ugly.'
+'simple is better than complex is better than complicated.'
 >>> bot.babbel('love')
-'flat is better than implicit.'
+'simple is better than implicit?'
 >>> bot.gibber()
-'ben isicompl comply t tetter?'
+'cicompl ber tethan t et?'
 >>> bot.create_word()
-'compan'
+'itteanex'
 >>>
 >>> knowledge = bot.dump_memory()
->>> knowledge['words']['than']
-# output is formatted, just for you
-{
-    'asc': {
-      'better': 6
-    },
-    'dsc': {
-        'dense': 1,
-        'nested': 1,
-        'ugly': 1,
-        'complex': 1,
-        'complicated': 1,
-        'implicit': 1
-    },
-    'cnt': 6
-}
+>>> knowledge['words']['dsc']['than']
+{'ugly': 1, 'implicit': 1, 'complex': 1, 'complicated': 1, 'nested': 1, 'dense': 1}
+>>> knowledge['words']['asc']['than']
+{'better': 6}
 >>> knowledge['stats']
 {'words': {'count': 6.0, 'avg': 5.0}, 'chars': {'count': 30.0, 'avg': 5.1000000000000005}}
 ```
 
+The 'dsc' chain maps the last `order` words (joined by spaces) to the words
+that followed them, the 'asc' chain maps the next `order` words to the words
+that preceded them. The empty string marks the start and end of a sentence.
+The same is done for the characters of words in `knowledge['chars']`.
+
 In the 'stats' dict we have 'chars' which holds the statistics of characters per word, the 'words' hold the statistics for words per sentence.
+
+How much the bot looks back
+---------------------------
+
+`order` (default 2) is the number of preceding words that pick the next one.
+With Goethe's Werther from `sample_data`:
+
+| order | sample |
+|-------|--------|
+| 1 | sagte sie grüßte mich frühlingsluft. |
+| 2 | ich war ausgestiegen und eine trübe wolke lag über ihrem auge. |
+| 3 | so reizend als es mir war so einförmig würde es in der erzählung werden! (that's Goethe verbatim) |
+
+Low orders are word salad, high orders mostly quote the input. The bigger the
+input, the higher the order can go before it starts quoting.
 
 Usage from the command line
 ---------------------------
@@ -62,14 +71,14 @@ Let's assume we have the zen of python in a file called zen.txt.
 
 ```sh
 $ ./chatter.py --help
-usage: chatter.py [-h] [-i [FILE [FILE ...]]] [-d FILE] [-o FILE] [-l INT]
-                  [-g] [-q]
+usage: chatter.py [-h] [-i [FILE ...]] [-d FILE] [-o FILE] [-a STRING]
+                  [-l INT] [-g] [-q] [-n INT]
 
 Generate random sentences and words from specified input files.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -i [FILE [FILE ...]], --input [FILE [FILE ...]]
+  -i [FILE ...], --input [FILE ...]
                         Text file(s) containing input data (defaults to stdin)
   -d FILE, --dict FILE  Restore and extend dictionary in file (json)
   -o FILE, --output FILE
@@ -81,8 +90,12 @@ optional arguments:
                         default: 1
   -g, --gibber          Create gibberish, make up the words
   -q, --quiet           No output - just consume input
+  -n INT, --order INT   Number of preceding words (or chars) that determine
+                        the next one - higher is more coherent, but closer to
+                        the input. default: 2, or what the dictionary was
+                        built with
 
-$ cat zen.txt | ./chatter.py -d knowledge.json 
+$ cat zen.txt | ./chatter.py -d knowledge.json -n 1
 the temptation to guess?
 
 $ ./chatter.py -d knowledge.json
