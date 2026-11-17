@@ -80,6 +80,20 @@ class ChatterTest(unittest.TestCase):
             self.assertEqual(bot.babbel("nested")[:-1],
                              "flat is better than nested")
 
+    def test_reply_is_about_the_rare_word(self):
+        bot = c.Chatter(order=1)
+        for line in ZEN:
+            bot.learn(line)
+        # 'is' is known six times, 'nested' once
+        replies = [bot.reply("Is it nested?") for _ in range(50)]
+        about_nested = [r for r in replies if 'nested' in r[:-1].split()]
+        self.assertGreater(len(about_nested), 35)
+
+    def test_reply_to_unknown_words_babbels(self):
+        bot = c.Chatter()
+        bot.learn("Hello world.")
+        self.assertEqual(bot.reply("Wie geht's?")[:-1], "hello world")
+
     def test_decode_falls_back_to_latin1(self):
         self.assertEqual(c.decode("daß".encode('latin-1')), "daß")
         self.assertEqual(c.decode("daß".encode('utf-8')), "daß")
@@ -99,6 +113,19 @@ class CommandLineTest(unittest.TestCase):
             out = self.run_cli('-d', dict_file, '-l', '3')
             self.assertEqual(out.split('\n')[0].strip()[:-1],
                              "wie froh bin ich")
+
+    def test_chat_replies_and_learns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'in.txt')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write("Hello wonderful world.")
+            dict_file = os.path.join(tmp, 'knowledge.json')
+            out = self.run_cli('-i', path, '-d', dict_file, '-c',
+                               stdin="Tell me about the world\n"
+                                     "Grüße aus Köln\n".encode('utf-8'))
+            self.assertIn("hello wonderful world", out)
+            with open(dict_file, encoding='utf-8') as f:
+                self.assertIn("aus köln", json.load(f)['words']['dsc'])
 
     def test_reads_latin1_input_file(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -72,7 +72,7 @@ Let's assume we have the zen of python in a file called zen.txt.
 ```sh
 $ ./chatter.py --help
 usage: chatter.py [-h] [-i [FILE ...]] [-d FILE] [-o FILE] [-a STRING]
-                  [-l INT] [-g] [-q] [-n INT]
+                  [-l INT] [-g] [-q] [-n INT] [-c]
 
 Generate random sentences and words from specified input files.
 
@@ -94,6 +94,8 @@ options:
                         the next one - higher is more coherent, but closer to
                         the input. default: 2, or what the dictionary was
                         built with
+  -c, --chat            Chat with the bot - it replies about the words you
+                        use and learns from them
 
 $ cat zen.txt | ./chatter.py -d knowledge.json -n 1
 the temptation to guess?
@@ -107,4 +109,24 @@ special cases aren't special enough to guess?
 $ ./chatter.py -d knowledge.json --gibber
 bl heris imes as nkish n plis iabeali.
 ```
+Chatting
+--------
+
+With `--chat` the bot answers what you type. It picks a word of your message
+it knows - preferably a rare one, since those carry the topic - and babbels
+about it. Afterwards it learns your message, so with `-d` the conversation
+ends up in its dictionary. An empty line ends the chat.
+
+```sh
+$ ./chatter.py -i sample_data/Goethe_Werther.txt --chat
+Talk to me - an empty line ends the chat.
+> Was macht dein Herz?
+mit drei schritten mess ich dein grab o du warst schön schön wie reizend sie für eindrücke macht.
+> Ich liebe dich, Lotte
+doch süßer die stimme nie erwacht er auf dich hat auf dich du allliebender?
+>
+```
+
+In Python: `bot.reply("Was macht dein Herz?")`.
+
 BTW meta-fun: teach the bot some python code and see if it runs ;)

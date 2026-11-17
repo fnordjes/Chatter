@@ -38,7 +38,7 @@ class Chatter(object):
         # commas don't end a sentence, so they're not split on
         sentences = re.split(r'\s*[()"!?.;:]+\s*', text)
         for sentence in sentences:
-            word_list = re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
+            word_list = self.split_words(sentence)
 
             # skip if there's nothing to do
             if not word_list:
@@ -78,6 +78,26 @@ class Chatter(object):
         about = about.lower() if about else None
         sentence = self.generate(self.words, self.stats['words'], about)
         return ' '.join(sentence) + self.select_weighted(self.delims)
+
+    def reply(self, text):
+        # talk about a word of the message - preferably a rare one, since
+        # those carry the topic while frequent ones are 'the', 'and', ...
+        counts = self.word_counts()
+        rarity = {}
+        for word in self.split_words(text.lower()):
+            if word in counts:
+                rarity[word] = 1.0 / counts[word]
+        if not rarity:
+            return self.babbel()
+        return self.babbel(self.select_weighted(rarity))
+
+    def word_counts(self):
+        counts = {}
+        for followers in self.words['dsc'].values():
+            for word, count in followers.items():
+                if word != EDGE:
+                    counts[word] = counts.get(word, 0) + count
+        return counts
 
     def create_word(self):
         return ''.join(self.generate(self.chars, self.stats['chars']))
@@ -137,6 +157,10 @@ class Chatter(object):
         stats['avg'] += (float(count) - stats['avg']) / float(stats['count'])
 
     @staticmethod
+    def split_words(sentence):
+        return re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
+
+    @staticmethod
     def new_chain():
         return {'asc': {}, 'dsc': {}}
 
@@ -159,6 +183,20 @@ class Chatter(object):
             total += value
             if random_pick < total: return key
         return key
+
+def chat(bot):
+    print('Talk to me - an empty line ends the chat.')
+    while True:
+        try:
+            line = input('> ')
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not line.strip():
+            break
+        print(bot.reply(line))
+        # learn after replying, otherwise the bot just parrots the line
+        bot.learn(line)
 
 if __name__ == '__main__':
     # Parse command line arguments
@@ -184,7 +222,14 @@ if __name__ == '__main__':
         help='Number of preceding words (or chars) that determine the next '
              'one - higher is more coherent, but closer to the input. '
              'default: 2, or what the dictionary was built with')
+    parser.add_argument('-c', '--chat', action='store_true',
+        help='Chat with the bot - it replies about the words you use and '
+             'learns from them')
     args = parser.parse_args()
+
+    sys.stdout.reconfigure(encoding='utf-8')
+    if not sys.stdin.isatty():
+        sys.stdin.reconfigure(encoding='utf-8')
 
     c = Chatter(args.order or 2)
 
@@ -203,12 +248,12 @@ if __name__ == '__main__':
                                  'Exiting.\n' % c.order)
                 exit(1)
 
-    # consume input - stdin only if something is piped in
+    # consume input - stdin only if something is piped in and isn't the chat
     if args.input:
         for name in args.input:
             with open(name, 'rb') as f:
                 c.learn(decode(f.read()))
-    elif not sys.stdin.isatty():
+    elif not args.chat and not sys.stdin.isatty():
         c.learn(decode(sys.stdin.buffer.read()))
 
     if not c.words['dsc']:
@@ -216,12 +261,13 @@ if __name__ == '__main__':
         exit(1)
 
     # now lets babbel a bit
-    if not args.quiet:
+    if args.chat:
+        chat(c)
+    elif not args.quiet:
         if args.output:
             out_file = open(args.output, 'w', encoding='utf-8')
         else:
             out_file = sys.stdout
-            out_file.reconfigure(encoding='utf-8')
         for _ in range(0, args.length):
             if args.gibber:
                 out_file.write(c.gibber())
