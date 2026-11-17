@@ -73,7 +73,7 @@ Let's assume we have the zen of python in a file called zen.txt.
 ```sh
 $ ./chatter.py --help
 usage: chatter.py [-h] [-i [FILE ...]] [-d FILE] [-o FILE] [-a STRING]
-                  [-l INT] [-g] [-q] [-n INT] [-c]
+                  [-l INT] [-g] [-q] [-n INT] [-c] [-t FILE [FILE ...]]
 
 Generate random sentences and words from specified input files.
 
@@ -89,7 +89,7 @@ options:
                         Give a word that should be included in the generated
                         text
   -l INT, --length INT  Number of sentences to generate (length may vary)
-                        default: 1
+                        default: 1, or 10 with --talk
   -g, --gibber          Create gibberish, make up the words
   -q, --quiet           No output - just consume input
   -n INT, --order INT   Number of preceding words (or chars) that determine
@@ -98,6 +98,9 @@ options:
                         built with
   -c, --chat            Chat with the bot - it replies about the words you
                         use and learns from them
+  -t FILE [FILE ...], --talk FILE [FILE ...]
+                        Let the bots of these dictionaries (json) talk to each
+                        other, they are named after the files and do not learn
 
 $ cat zen.txt | ./chatter.py -d knowledge.json -n 1
 the temptation to guess?
@@ -130,5 +133,23 @@ doch süßer die stimme nie erwacht er auf dich hat auf dich du allliebender?
 ```
 
 In Python: `bot.reply("Was macht dein Herz?")`.
+
+Round table
+-----------
+
+With `--talk` bots from several dictionaries talk to each other: one opens
+(about `--about` if given), then each turn another one replies to the last
+line. They don't learn from each other, the dictionaries stay untouched.
+
+```sh
+$ ./chatter.py -t zarathustra.json moby.json bibel.json -l 4
+zarathustra: hier aber geschah es dass der mondschein drin nachts sich fürchtet.
+moby: die alten segel wurden ausgebessert [...] und hatten den schönsten mondschein [...]
+zarathustra: es könnte wohl so abgegangen sein.
+moby: doch wohl kaum.
+```
+
+Plain numbers are not learned as words, so verse and chapter numbers don't
+end up in the babbel.
 
 BTW meta-fun: teach the bot some python code and see if it runs ;)

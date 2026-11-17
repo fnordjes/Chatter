@@ -71,6 +71,7 @@ class Chatter(object):
         self.order = order
         self.chars = self.new_chain()
         self.words = self.new_chain()
+        self.counts = None
 
         self.stats = {}
         # words per sentence stats
@@ -87,6 +88,7 @@ class Chatter(object):
         self.delims = {'!': 1, '?': 2, '.': 7}
 
     def learn(self, text):
+        self.counts = None
         text = text.lower()
         # commas don't end a sentence, so they're not split on
         sentences = re.split(r'\s*[()"!?.;:]+\s*', text)
@@ -145,6 +147,12 @@ class Chatter(object):
         return self.babbel(self.select_weighted(rarity))
 
     def word_counts(self):
+        # counting is slow for big books, so remember it until learning more
+        if self.counts is None:
+            self.counts = self.count_words()
+        return self.counts
+
+    def count_words(self):
         counts = {}
         for followers in self.words['dsc'].values():
             for word, count in followers.items():
@@ -204,6 +212,7 @@ class Chatter(object):
         self.chars = dictionary['chars']
         self.words = dictionary['words']
         self.stats = dictionary['stats']
+        self.counts = None
 
     def __update_average(self, count, stats):
         stats['count'] += 1
@@ -211,7 +220,9 @@ class Chatter(object):
 
     @staticmethod
     def split_words(sentence):
-        return re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
+        words = re.findall(r'[\w\d]+[\-\']{0,1}[\w\d]+|[\w\d]+', sentence)
+        # plain numbers are mostly chapter or verse numbers, not words
+        return [word for word in words if not word.isdigit()]
 
     @staticmethod
     def new_chain():
@@ -251,6 +262,26 @@ def chat(bot):
         # learn after replying, otherwise the bot just parrots the line
         bot.learn(line)
 
+def talk(bots, turns, about=None):
+    # one bot opens, then each turn another one replies to the last line
+    speaker = random.choice(list(bots))
+    line = bots[speaker].babbel(about)
+    print('%s: %s' % (speaker, line))
+    for _ in range(1, turns):
+        speaker = random.choice([name for name in bots if name != speaker])
+        line = bots[speaker].reply(line)
+        print('%s: %s' % (speaker, line))
+
+def load(bot, file_name):
+    with open(file_name, encoding='utf-8') as f:
+        s = f.read()
+    if s.strip():
+        try:
+            bot.read_dict(json.loads(s))
+        except (ValueError, KeyError):
+            sys.stderr.write('Cannot read dict file %s. Exiting.\n' % file_name)
+            exit(1)
+
 if __name__ == '__main__':
     # Parse command line arguments
     parser = argparse.ArgumentParser(
@@ -265,8 +296,8 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--about', metavar='STRING',
         help='Give a word that should be included in the generated text')
     parser.add_argument('-l', '--length', metavar='INT', type=int,
-        help='Number of sentences to generate (length may vary) default: 1',
-        default=1)
+        help='Number of sentences to generate (length may vary) default: 1, '
+             'or 10 with --talk')
     parser.add_argument('-g', '--gibber', action='store_true',
         help='Create gibberish, make up the words')
     parser.add_argument('-q', '--quiet', action='store_true',
@@ -278,28 +309,36 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--chat', action='store_true',
         help='Chat with the bot - it replies about the words you use and '
              'learns from them')
+    parser.add_argument('-t', '--talk', metavar='FILE', nargs='+',
+        help='Let the bots of these dictionaries (json) talk to each other, '
+             'they are named after the files and do not learn')
     args = parser.parse_args()
 
     sys.stdout.reconfigure(encoding='utf-8')
     if not sys.stdin.isatty():
         sys.stdin.reconfigure(encoding='utf-8')
 
+    if args.talk:
+        bots = {}
+        for file_name in args.talk:
+            name = os.path.splitext(os.path.basename(file_name))[0]
+            bots[name] = Chatter()
+            load(bots[name], file_name)
+        if len(bots) < 2:
+            sys.stderr.write('It takes two to talk. Exiting.\n')
+            exit(1)
+        talk(bots, args.length or 10, args.about)
+        exit(0)
+
     c = Chatter(args.order or 2)
 
     # restore memory
     if args.dict and os.path.exists(args.dict):
-        with open(args.dict, encoding='utf-8') as f:
-            s = f.read()
-        if s.strip():
-            try:
-                c.read_dict(json.loads(s))
-            except (ValueError, KeyError):
-                sys.stderr.write('Cannot read dict file. Exiting.\n')
-                exit(1)
-            if args.order and args.order != c.order:
-                sys.stderr.write('Dict file was built with order %d. '
-                                 'Exiting.\n' % c.order)
-                exit(1)
+        load(c, args.dict)
+        if args.order and args.order != c.order:
+            sys.stderr.write('Dict file was built with order %d. '
+                             'Exiting.\n' % c.order)
+            exit(1)
 
     # consume input - stdin only if something is piped in and isn't the chat
     if args.input:
@@ -321,7 +360,7 @@ if __name__ == '__main__':
             out_file = open(args.output, 'w', encoding='utf-8')
         else:
             out_file = sys.stdout
-        for _ in range(0, args.length):
+        for _ in range(0, args.length or 1):
             if args.gibber:
                 out_file.write(c.gibber())
             else:

@@ -117,6 +117,13 @@ class ChatterTest(unittest.TestCase):
         bot.learn("Hello world.")
         self.assertEqual(bot.reply("Wie geht's?")[:-1], "hello world")
 
+    def test_numbers_are_not_words(self):
+        bot = c.Chatter()
+        bot.learn("1 Am Anfang schuf Gott. 2 Und die Erde war wüst.")
+        for _ in range(20):
+            self.assertFalse(any(w.isdigit() for w in bot.babbel()[:-1].split()))
+        self.assertNotIn("3", bot.word_counts())
+
     def test_decode_falls_back_to_latin1(self):
         self.assertEqual(c.decode("daß".encode('latin-1')), "daß")
         self.assertEqual(c.decode("daß".encode('utf-8')), "daß")
@@ -165,6 +172,26 @@ class CommandLineTest(unittest.TestCase):
                               'ich..', 'Daß', 'ich', 'weg', 'bin!.'])
             out = self.run_cli('-i', path, '-n', '3', '-a', 'weg')
             self.assertEqual(out.strip()[:-1], "daß ich weg bin")
+
+    def test_bots_talk_to_each_other(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            names = []
+            for name, text in [('cats', "The cat sleeps on the mat."),
+                               ('dogs', "The dog barks at the cat.")]:
+                bot = c.Chatter()
+                bot.learn(text)
+                names.append(os.path.join(tmp, name + '.json'))
+                with open(names[-1], 'w', encoding='utf-8') as f:
+                    json.dump(bot.dump_memory(), f)
+            out = self.run_cli('-t', *names, '-l', '6').splitlines()
+            self.assertEqual(len(out), 6)
+            speakers = [line.split(':')[0] for line in out]
+            # two bots take turns
+            self.assertEqual(set(speakers), {'cats', 'dogs'})
+            self.assertTrue(all(a != b for a, b in zip(speakers, speakers[1:])))
+            # the dicts are left alone
+            with open(names[0], encoding='utf-8') as f:
+                self.assertNotIn('dog', json.load(f)['words']['dsc'][' the'])
 
     def test_reads_latin1_input_file(self):
         with tempfile.TemporaryDirectory() as tmp:
