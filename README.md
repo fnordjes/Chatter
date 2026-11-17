@@ -3,6 +3,10 @@ Chatter
 
 Babbel Bot - builds Markov-Chains by given text and uses them to generate text.
 
+Requires Python 3. Input may be UTF-8 or Latin-1 encoded.
+
+Run the tests with `python -m unittest test_chatter`.
+
 Usage as python module
 ----------------------
 
@@ -42,10 +46,11 @@ Let' teach the bot a passage from "The Zen of Python", by Tim Peters:
         'complex': 1,
         'complicated': 1,
         'implicit': 1
-    }
+    },
+    'cnt': 6
 }
 >>> knowledge['stats']
-{'chars': {'count': 30.0, 'avg': 5.1000000000000005}, 'words': {'count': 6.0, 'avg': 5.0}}
+{'words': {'count': 6.0, 'avg': 5.0}, 'chars': {'count': 30.0, 'avg': 5.1000000000000005}}
 ```
 
 In the 'stats' dict we have 'chars' which holds the statistics of characters per word, the 'words' hold the statistics for words per sentence.
@@ -58,7 +63,7 @@ Let's assume we have the zen of python in a file called zen.txt.
 ```sh
 $ ./chatter.py --help
 usage: chatter.py [-h] [-i [FILE [FILE ...]]] [-d FILE] [-o FILE] [-l INT]
-                  [-g]
+                  [-g] [-q]
 
 Generate random sentences and words from specified input files.
 
@@ -66,7 +71,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -i [FILE [FILE ...]], --input [FILE [FILE ...]]
                         Text file(s) containing input data (defaults to stdin)
-  -d FILE, --dict FILE  Restore and extend dictionary in file
+  -d FILE, --dict FILE  Restore and extend dictionary in file (json)
   -o FILE, --output FILE
                         Output of the babbelbot (defaults to stdout)
   -a STRING, --about STRING
@@ -75,17 +80,18 @@ optional arguments:
   -l INT, --length INT  Number of sentences to generate (length may vary)
                         default: 1
   -g, --gibber          Create gibberish, make up the words
+  -q, --quiet           No output - just consume input
 
-$ cat zen.txt | ./chatter.py -d knowledge.dict 
+$ cat zen.txt | ./chatter.py -d knowledge.json 
 the temptation to guess?
 
-$ echo "" | ./chatter.py -d knowledge.dict 
+$ ./chatter.py -d knowledge.json
 the implementation is better than complicated?
 
-$ echo "" | ./chatter.py -d knowledge.dict --about special
+$ ./chatter.py -d knowledge.json --about special
 special cases aren't special enough to guess?
 
-$ ./chatter.py -d knowledge.dict -gibber
+$ ./chatter.py -d knowledge.json --gibber
 bl heris imes as nkish n plis iabeali.
 ```
 BTW meta-fun: teach the bot some python code and see if it runs ;)

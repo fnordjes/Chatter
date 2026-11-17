@@ -1,10 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-import pprint, sys
+import json, sys
 
 file_name = sys.argv[1]
-fp = open(file_name)
-contents = fp.read()
-pp = pprint.PrettyPrinter(indent=4)
-data = eval(contents)
-pp.pprint(data)
+with open(file_name, encoding='utf-8') as fp:
+    data = json.load(fp)
+print(json.dumps(data, indent=4, ensure_ascii=False))
